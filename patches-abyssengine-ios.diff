@@ -1,3 +1,32 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 37760a3..3ee9041 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -66,8 +66,22 @@ include_directories(${ZLIB_INCLUDE_DIRS})
+ find_package(LibArchive REQUIRED)
+ include_directories(${LibArchive_INCLUDE_DIR})
+ 
+-find_package(FFMPEG COMPONENTS AVCODEC AVFORMAT AVUTIL SWSCALE SWRESAMPLE REQUIRED)
+-include_directories(${FFMPEG_INCLUDE_DIRS})
++# FFMPEG provides in-game video decoding. On iOS the vcpkg build of ffmpeg
++# (and its libiconv dependency) fails to compile against the very new Xcode/iOS
++# SDKs, so we make it optional and fall back to a stub VideoManager (no video).
++# See README-iOS.md "ffmpeg fallback". When vcpkg does not provide ffmpeg the
++# find_package below silently disables it and we build the stub.
++option(USE_FFMPEG "Build with ffmpeg in-game video support" ON)
++if (USE_FFMPEG)
++    find_package(FFMPEG COMPONENTS AVCODEC AVFORMAT AVUTIL SWSCALE SWRESAMPLE)
++    if (FFMPEG_FOUND)
++        include_directories(${FFMPEG_INCLUDE_DIRS})
++        add_compile_definitions(USE_FFMPEG)
++    else ()
++        message(WARNING "FFMPEG not found; building without in-game video (stub VideoManager)")
++        set(USE_FFMPEG OFF)
++    endif ()
++endif ()
+ 
+ #add_compile_options(-fsanitize=address -g)
+ #add_link_options(-fsanitize=address)
 diff --git a/src/AbyssEngine.c b/src/AbyssEngine.c
 index 3eb2bee..e9d28a7 100644
 --- a/src/AbyssEngine.c
@@ -30,3 +59,95 @@ index 3eb2bee..e9d28a7 100644
  
      if (sdl_window == NULL) {
          FATAL(SDL_GetError());
+diff --git a/src/managers/VideoManager.c b/src/managers/VideoManager.c
+index 0d7fbbf..4219300 100644
+--- a/src/managers/VideoManager.c
++++ b/src/managers/VideoManager.c
+@@ -8,14 +8,17 @@
+ #include "AudioManager.h"
+ #include "InputManager.h"
+ #include <assert.h>
++#include <stdlib.h>
++#include <string.h>
++
++#ifdef USE_FFMPEG
++
+ #include <libavcodec/avcodec.h>
+ #include <libavformat/avformat.h>
+ #include <libavutil/opt.h>
+ #include <libavutil/time.h>
+ #include <libswresample/swresample.h>
+ #include <libswscale/swscale.h>
+-#include <stdlib.h>
+-#include <string.h>
+ 
+ #define AUDIO_RING_BUFFER_SIZE          (1024 * 1024)
+ #define DECODE_BUFFER_SIZE              (1024 * 8)
+@@ -424,3 +427,53 @@ bool VideoManager__ProcessFrame(void) {
+     av_packet_free(&packet);
+     return false;
+ }
++
++#else /* !USE_FFMPEG — stub build: no in-game video on this platform */
++
++typedef struct VideoManager {
++    Mutex *mutex;
++    bool   is_playing;
++} VideoManager;
++
++VideoManager *video_manager;
++
++void VideoManager_InitializeSingleton(void) {
++    video_manager = malloc(sizeof(VideoManager));
++    memset(video_manager, 0, sizeof(VideoManager));
++    video_manager->mutex = Mutex_Create();
++}
++
++void VideoManager_DestroySingleton(void) {
++    if (video_manager == NULL) {
++        return;
++    }
++    Mutex_Destroy(&video_manager->mutex);
++    free(video_manager);
++    video_manager = NULL;
++}
++
++bool VideoManager_IsPlayingVideo(void) {
++    return false;
++}
++
++void VideoManager_Update(uint64_t delta) {
++    (void)delta;
++}
++
++void VideoManager_Render(void) {
++}
++
++void VideoManager_PlayVideo(const char *path) {
++    /* ffmpeg unavailable on this build (e.g. iOS vcpkg SDK incompatibility):
++       skip in-game video silently so the game keeps running. */
++    (void)path;
++}
++
++int16_t VideoManager_GetAudioSample(void) {
++    return 0;
++}
++
++void VideoManager_StopVideo(void) {
++}
++
++#endif /* USE_FFMPEG */
+diff --git a/vcpkg.json b/vcpkg.json
+index 6b798cc..e0b4df2 100644
+--- a/vcpkg.json
++++ b/vcpkg.json
+@@ -11,9 +11,6 @@
+   }, {
+     "name" : "zlib",
+     "version>=" : "1.3"
+-  }, {
+-    "name" : "ffmpeg",
+-    "version>=" : "6.1#2"
+   }, {
+     "name" : "sdl2",
+     "version>=" : "2.30.1"
