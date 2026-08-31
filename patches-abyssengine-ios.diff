@@ -158,6 +158,74 @@ index 878e80d..7b718fb 100644
  
  typedef struct AudioStream AudioStream;
  
+diff --git a/src/managers/AudioManager.c b/src/managers/AudioManager.c
+index 2604712..d980b11 100644
+--- a/src/managers/AudioManager.c
++++ b/src/managers/AudioManager.c
+@@ -8,8 +8,10 @@ typedef struct AudioManager {
+     bool                audio_mute;
+     SDL_AudioDeviceID   audio_device_id;
+     SDL_AudioSpec       audio_spec;
++#ifdef USE_FFMPEG
+     enum AVSampleFormat out_sample_format;
+     AVChannelLayout     channel_layout;
++#endif
+     struct AudioStream *background_music;
+     float               volume[AUDIO_SET_VOLUME_TYPE_MAX];
+     float               volume_actual[AUDIO_SET_VOLUME_TYPE_MAX];
+@@ -85,6 +87,7 @@ void AudioManager_InitSingleton(void) {
+     LOG_DEBUG("Obtained audio spec: %d Hz, %d channels, %d samples", audio_manager->audio_spec.freq,
+               audio_manager->audio_spec.channels, audio_manager->audio_spec.samples);
+ 
++#ifdef USE_FFMPEG
+     switch (audio_manager->audio_spec.format) {
+     case AUDIO_U8:
+         audio_manager->out_sample_format = AV_SAMPLE_FMT_U8;
+@@ -101,13 +104,16 @@ void AudioManager_InitSingleton(void) {
+     default:
+         LOG_FATAL("Invalid audio spec format: 0x%04X", audio_manager->audio_spec.format);
+     }
++#endif
+ 
+     AudioManager_SetVolume(AUDIO_SET_VOLUME_TYPE_MASTER, AbyssConfiguration_GetMasterVolume());
+     AudioManager_SetVolume(AUDIO_SET_VOLUME_TYPE_MUSIC, AbyssConfiguration_GetMusicVolume());
+     AudioManager_SetVolume(AUDIO_SET_VOLUME_TYPE_SFX, AbyssConfiguration_GetSfxVolume());
+     AudioManager_SetVolume(AUDIO_SET_VOLUME_TYPE_UI, AbyssConfiguration_GetUiVolume());
+ 
++#ifdef USE_FFMPEG
+     av_channel_layout_default(&audio_manager->channel_layout, audio_manager->audio_spec.channels);
++#endif
+     SDL_PauseAudioDevice(audio_manager->audio_device_id, SDL_FALSE);
+ }
+ 
+@@ -156,6 +162,8 @@ void AudioManager_SetVolume(enum AudioSetVolumeType audio_set_volume_type, float
+ 
+ SDL_AudioSpec AudioManager_GetAudioSpec(void) { return audio_manager->audio_spec; }
+ 
++#ifdef USE_FFMPEG
+ AVChannelLayout AudioManager_GetChannelLayout(void) { return audio_manager->channel_layout; }
+ 
+ enum AVSampleFormat AudioManager_GetSampleFormat(void) { return audio_manager->out_sample_format; }
++#endif
+diff --git a/src/managers/AudioManager.h b/src/managers/AudioManager.h
+index a061d52..842ffcd 100644
+--- a/src/managers/AudioManager.h
++++ b/src/managers/AudioManager.h
+@@ -20,7 +20,14 @@ void                AudioManager_PlayMusic(const char *path, bool loop);
+ void                AudioManager_SetVolume(enum AudioSetVolumeType audio_set_volume_type, float volume);
+ void                AudioManager_FillBuffer(void *userdata, Uint8 *stream, int len);
+ SDL_AudioSpec       AudioManager_GetAudioSpec(void);
++
++/* The channel-layout / sample-format getters are only meaningful when ffmpeg is
++   available (they feed AudioStream/VideoManager resampling). On builds without
++   ffmpeg (e.g. iOS) those callers are stubbed out, so we hide the declarations
++   to avoid pulling in ffmpeg types. */
++#ifdef USE_FFMPEG
+ AVChannelLayout     AudioManager_GetChannelLayout(void);
+ enum AVSampleFormat AudioManager_GetSampleFormat(void);
++#endif
+ 
+ #endif // ABYSS_AUDIOMAN_H
 diff --git a/src/managers/VideoManager.c b/src/managers/VideoManager.c
 index 0d7fbbf..4219300 100644
 --- a/src/managers/VideoManager.c
