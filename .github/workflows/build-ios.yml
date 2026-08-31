@@ -29,6 +29,12 @@ jobs:
           repository: AbyssEngine/OpenDiablo2
           path: game
 
+      # iOS does not run ffmpeg video, so the 2 video MPQs in upstream's .loadorder
+      # are useless and on most user installs they are 1 KB CD placeholders that
+      # crash the engine at boot. Strip them before packaging.
+      - name: Replace .loadorder with iOS-safe version (no video MPQs)
+        run: cp ios/.loadorder game/DATA/MPQ-D2/.loadorder
+
       - name: Install vcpkg
         run: |
           git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
