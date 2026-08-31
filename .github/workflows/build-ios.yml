@@ -67,7 +67,9 @@ jobs:
             -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="${{ github.workspace }}/ios.toolchain.cmake" \
             -DVCPKG_TARGET_TRIPLET=arm64-ios \
             -DCMAKE_BUILD_TYPE=Release \
-            -DGITHUB_ACTIONS=ON
+            -DGITHUB_ACTIONS=ON \
+            -DCMAKE_OSX_CODE_SIGNING_ALLOWED=NO \
+            -DCMAKE_OSX_CODE_SIGN_IDENTITY=""
 
       - name: Build
         run: cmake --build build-ios --config Release
@@ -80,9 +82,14 @@ jobs:
           cp ios/Info.plist Payload/AbyssEngine.app/Info.plist
           cp -r game Payload/AbyssEngine.app/game
 
-      - name: Ad-hoc sign + package .ipa
+      # NOTE: 不在云端做任何签名。第三方签名工具（全能签 / AltStore /
+      # Sideloadly）在未签名 .app 上重签才是干净的——若我们塞入占位 ad-hoc
+      # 签名，工具的 strip/重签会破坏原有 CodeDirectory 与 Mach-O 的哈希
+      # 一致性，导致"CodeDirectory 与 Mach-O 不一致、安装后闪退"。
+      - name: Package unsigned .ipa (let user-side signing tool do final sign)
         run: |
-          xcrun codesign --force --deep --sign "-" Payload/AbyssEngine.app || true
+          # 双保险：剥离任何意外残留签名
+          xcrun codesign --remove-signature Payload/AbyssEngine.app 2>/dev/null || true
           /usr/bin/zip -r AbyssEngine-D2-iOS.ipa Payload
 
       - name: Upload IPA artifact
