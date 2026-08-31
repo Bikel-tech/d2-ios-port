@@ -8,9 +8,6 @@ on:
   push:
     branches: [ main ]
 
-env:
-  IPHONEOS_DEPLOYMENT_TARGET: "15.0"
-
 jobs:
   build-ios:
     runs-on: macos-latest
