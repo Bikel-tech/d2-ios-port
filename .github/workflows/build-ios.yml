@@ -64,7 +64,7 @@ jobs:
         run: |
           cmake -B build-ios -S engine \
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-            -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=ios.toolchain.cmake \
+            -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="${{ github.workspace }}/ios.toolchain.cmake" \
             -DVCPKG_TARGET_TRIPLET=arm64-ios \
             -DCMAKE_BUILD_TYPE=Release
 
