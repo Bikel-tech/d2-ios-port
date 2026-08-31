@@ -28,10 +28,30 @@ index 37760a3..3ee9041 100644
  #add_compile_options(-fsanitize=address -g)
  #add_link_options(-fsanitize=address)
 diff --git a/src/AbyssEngine.c b/src/AbyssEngine.c
-index 3eb2bee..e9d28a7 100644
+index 3eb2bee..dabd359 100644
 --- a/src/AbyssEngine.c
 +++ b/src/AbyssEngine.c
-@@ -34,6 +34,15 @@ int main(int argc, char **argv) {
+@@ -11,14 +11,19 @@
+ #include "scenes/SceneIntroVideos.h"
+ #include "types/Palette.h"
+ #include "util/Crypto.h"
++
++#ifdef USE_FFMPEG
+ #include <libavutil/log.h>
++#endif
+ 
+ int main(int argc, char **argv) {
+     (void)(argc);
+     (void)(argv);
+ 
+     Log_SetLevel(LOG_LEVEL_EVERYTHING);
++#ifdef USE_FFMPEG
+     av_log_set_level(AV_LOG_FATAL);
++#endif
+     LOG_INFO("Abyss Engine");
+ 
+     LOG_DEBUG("Initializing SDL...");
+@@ -34,6 +39,15 @@ int main(int argc, char **argv) {
      memset(config_path, 0, 4096);
  #ifdef _WIN32
      snprintf(config_path, 4096, "%s\\abyss\\abyss.ini", getenv("APPDATA"));
@@ -47,7 +67,7 @@ index 3eb2bee..e9d28a7 100644
  #elif __APPLE__
      snprintf(config_path, 4096, "%s/Library/Application Support/abyss/abyss.ini", getenv("HOME"));
  #else
-@@ -48,7 +57,11 @@ int main(int argc, char **argv) {
+@@ -48,7 +62,11 @@ int main(int argc, char **argv) {
      sdl_window = SDL_CreateWindow("Abyss Engine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                    (int)((float)800 * AbyssConfiguration_GetInitialScale()),
                                    (int)((float)600 * AbyssConfiguration_GetInitialScale()),
@@ -59,6 +79,85 @@ index 3eb2bee..e9d28a7 100644
  
      if (sdl_window == NULL) {
          FATAL(SDL_GetError());
+diff --git a/src/audio/AudioStream.c b/src/audio/AudioStream.c
+index fb47061..08a098f 100644
+--- a/src/audio/AudioStream.c
++++ b/src/audio/AudioStream.c
+@@ -1,5 +1,7 @@
+ #include "AudioStream.h"
+ 
++#ifdef USE_FFMPEG
++
+ #include "../common/FileManager.h"
+ #include "../common/Logging.h"
+ #include "../managers/AudioManager.h"
+@@ -269,3 +271,49 @@ void AudioStream_Stop(AudioStream *audio_stream) {
+     audio_stream->is_playing = false;
+     Mutex_Unlock(audio_stream->mutex);
+ }
++
++#else /* !USE_FFMPEG — audio decoding disabled (e.g. iOS build without ffmpeg) */
++
++#include "../common/Logging.h"
++
++AudioStream *AudioStream_Create(const char *path) {
++    (void)path;
++    LOG_WARN("AudioStream: ffmpeg unavailable; audio playback disabled (stub)");
++    return NULL;
++}
++
++void AudioStream_Destroy(AudioStream **audio_stream) {
++    if (audio_stream != NULL) {
++        *audio_stream = NULL;
++    }
++}
++
++int16_t AudioStream_GetSample(AudioStream *audio_stream) {
++    (void)audio_stream;
++    return 0;
++}
++
++bool AudioStream_IsLooping(const AudioStream *audio_stream) {
++    (void)audio_stream;
++    return false;
++}
++
++void AudioStream_SetLoop(AudioStream *audio_stream, bool loop) {
++    (void)audio_stream;
++    (void)loop;
++}
++
++void AudioStream_Play(AudioStream *audio_stream) {
++    (void)audio_stream;
++}
++
++bool AudioStream_IsPlaying(const AudioStream *audio_stream) {
++    (void)audio_stream;
++    return false;
++}
++
++void AudioStream_Stop(AudioStream *audio_stream) {
++    (void)audio_stream;
++}
++
++#endif /* USE_FFMPEG */
+diff --git a/src/audio/AudioStream.h b/src/audio/AudioStream.h
+index 878e80d..7b718fb 100644
+--- a/src/audio/AudioStream.h
++++ b/src/audio/AudioStream.h
+@@ -4,9 +4,12 @@
+ #include "../common/MpqStream.h"
+ #include "../common/RingBuffer.h"
+ #include "../util/Mutex.h"
++
++#ifdef USE_FFMPEG
+ #include <libavcodec/avcodec.h>
+ #include <libavformat/avformat.h>
+ #include <libswresample/swresample.h>
++#endif
+ 
+ typedef struct AudioStream AudioStream;
+ 
 diff --git a/src/managers/VideoManager.c b/src/managers/VideoManager.c
 index 0d7fbbf..4219300 100644
 --- a/src/managers/VideoManager.c
