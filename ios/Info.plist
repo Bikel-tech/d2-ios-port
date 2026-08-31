@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>                 <string>AbyssEngine</string>
+    <key>CFBundleDisplayName</key>          <string>Diablo II (Open)</string>
+    <key>CFBundleIdentifier</key>           <string>com.abyssengine.d2ios</string>
+    <key>CFBundleVersion</key>              <string>1</string>
+    <key>CFBundleShortVersionString</key>   <string>0.1.0</string>
+    <key>CFBundleExecutable</key>           <string>AbyssEngine</string>
+    <key>CFBundlePackageType</key>          <string>APPL</string>
+    <key>LSRequiresIPhoneOS</key>           <true/>
+    <key>MinimumOSVersion</key>             <string>15.0</string>
+    <key>UIRequiredDeviceCapabilities</key>
+    <array><string>arm64</string></array>
+    <!-- Diablo II is a landscape game. -->
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UIRequiresFullScreen</key>         <true/>
+    <key>UIStatusBarHidden</key>            <true/>
+    <!-- SDL2 refuses to start without a declared launch screen. -->
+    <key>UILaunchScreen</key>
+    <dict>
+        <key>UIColorName</key>
+        <string>systemBackgroundColor</string>
+    </dict>
+</dict>
+</plist>

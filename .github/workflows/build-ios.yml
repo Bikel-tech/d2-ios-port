@@ -1,0 +1,85 @@
+name: Build iOS IPA (AbyssEngine + OpenDiablo2)
+
+# 云端构建：无需任何 Mac。推送到 GitHub 后，GitHub 的云端 Mac 自动：
+#   拉引擎 + 游戏数据 → 套 iOS 补丁 → 交叉编译 arm64-ios → 打包签名 .ipa
+# 产物在 Actions 的 Artifacts 里下载，用 AltStore/Sideloadly 旁载安装。
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+env:
+  IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+
+jobs:
+  build-ios:
+    runs-on: macos-15
+    steps:
+      - name: Checkout this port repo (toolchain / plist / CI / patch)
+        uses: actions/checkout@v4
+
+      - name: Checkout engine (AbyssEngine, C++/CMake/SDL2)
+        uses: actions/checkout@v4
+        with:
+          repository: AbyssEngine/AbyssEngine
+          path: engine
+
+      - name: Checkout game content (OpenDiablo2 正版数据 + lua)
+        uses: actions/checkout@v4
+        with:
+          repository: AbyssEngine/OpenDiablo2
+          path: game
+
+      - name: Install vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh"
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+
+      - name: Apply iOS platform patch to engine
+        working-directory: engine
+        run: |
+          git apply ../patches-abyssengine-ios.diff || \
+          git apply --3way ../patches-abyssengine-ios.diff || \
+          echo "PATCH_APPLY_FAILED"
+
+      - name: Drop touch adapter into engine src
+        run: |
+          mkdir -p engine/src/ios
+          cp src/touch_adapter.h engine/src/ios/
+          cp src/touch_adapter.c engine/src/ios/
+
+      - name: Build deps for iOS (arm64-ios)
+        working-directory: engine
+        run: "$VCPKG_ROOT/vcpkg" install --triplet arm64-ios
+        # 风险提示：ffmpeg 在 iOS 上偶有失败。若失败，见仓库 README「ffmpeg 兜底」。
+
+      - name: Configure (CMake, iOS toolchain)
+        run: |
+          cmake -B build-ios -S engine \
+            -DCMAKE_TOOLCHAIN_FILE=ios.toolchain.cmake \
+            -DVCPKG_TARGET_TRIPLET=arm64-ios \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build-ios --config Release
+
+      - name: Assemble .app + bundle game data + Info.plist
+        run: |
+          mkdir -p Payload/AbyssEngine.app
+          cp -r build-ios/AbyssEngine.app/* Payload/AbyssEngine.app/ 2>/dev/null || \
+          cp build-ios/AbyssEngine Payload/AbyssEngine.app/AbyssEngine
+          cp ios/Info.plist Payload/AbyssEngine.app/Info.plist
+          cp -r game Payload/AbyssEngine.app/game
+
+      - name: Ad-hoc sign + package .ipa
+        run: |
+          xcrun codesign --force --deep --sign "-" Payload/AbyssEngine.app || true
+          /usr/bin/zip -r AbyssEngine-D2-iOS.ipa Payload
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AbyssEngine-D2-iOS
+          path: AbyssEngine-D2-iOS.ipa

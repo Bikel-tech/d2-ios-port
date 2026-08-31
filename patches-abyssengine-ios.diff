@@ -1,0 +1,32 @@
+diff --git a/src/AbyssEngine.c b/src/AbyssEngine.c
+index 3eb2bee..e9d28a7 100644
+--- a/src/AbyssEngine.c
++++ b/src/AbyssEngine.c
+@@ -34,6 +34,15 @@ int main(int argc, char **argv) {
+     memset(config_path, 0, 4096);
+ #ifdef _WIN32
+     snprintf(config_path, 4096, "%s\\abyss\\abyss.ini", getenv("APPDATA"));
++#elif defined(__APPLE__) && TARGET_OS_IPHONE
++    // iOS: the app is sandboxed, so use SDL's writable preferences path.
++    {
++        char *pref_path = SDL_GetPrefPath("abyssengine", "abyss");
++        if (pref_path != NULL) {
++            snprintf(config_path, 4096, "%sabyss.ini", pref_path);
++            SDL_free(pref_path);
++        }
++    }
+ #elif __APPLE__
+     snprintf(config_path, 4096, "%s/Library/Application Support/abyss/abyss.ini", getenv("HOME"));
+ #else
+@@ -48,7 +57,11 @@ int main(int argc, char **argv) {
+     sdl_window = SDL_CreateWindow("Abyss Engine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                   (int)((float)800 * AbyssConfiguration_GetInitialScale()),
+                                   (int)((float)600 * AbyssConfiguration_GetInitialScale()),
++#if defined(__APPLE__) && TARGET_OS_IPHONE
++                                  SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
++#else
+                                   SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
++#endif
+ 
+     if (sdl_window == NULL) {
+         FATAL(SDL_GetError());
