@@ -51,6 +51,9 @@ jobs:
           cp src/touch_adapter.h engine/src/ios/
           cp src/touch_adapter.c engine/src/ios/
 
+      - name: Install build prerequisites (nasm/yasm/pkg-config for ffmpeg)
+        run: brew install nasm yasm pkg-config
+
       - name: Build deps for iOS (arm64-ios)
         working-directory: engine
         run: |
