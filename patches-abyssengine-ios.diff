@@ -138,10 +138,17 @@ index 0d7fbbf..4219300 100644
 +
 +#endif /* USE_FFMPEG */
 diff --git a/vcpkg.json b/vcpkg.json
-index 6b798cc..e0b4df2 100644
+index 6b798cc..3bb76d6 100644
 --- a/vcpkg.json
 +++ b/vcpkg.json
-@@ -11,9 +11,6 @@
+@@ -7,13 +7,12 @@
+   "overrides" : [ ],
+   "dependencies" : [ {
+     "name" : "libarchive",
+-    "version>=" : "3.6.2"
++    "version>=" : "3.6.2",
++    "default-features" : false,
++    "features" : [ "bzip2", "lz4", "lzma", "zstd" ]
    }, {
      "name" : "zlib",
      "version>=" : "1.3"
