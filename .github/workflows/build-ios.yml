@@ -14,6 +14,8 @@ env:
 jobs:
   build-ios:
     runs-on: macos-latest
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/_vcpkg
     steps:
       - name: Checkout this port repo (toolchain / plist / CI / patch)
         uses: actions/checkout@v4
@@ -34,8 +36,10 @@ jobs:
         run: |
           git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
           "$VCPKG_ROOT/bootstrap-vcpkg.sh"
+          # 把仓库自带的 arm64-ios 三元组挂进 vcpkg（避免与仓库内 vcpkg/ 目录撞名）
+          cp vcpkg/arm64-ios.cmake "$VCPKG_ROOT/triplets/arm64-ios.cmake"
         env:
-          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+          VCPKG_ROOT: ${{ github.workspace }}/_vcpkg
 
       - name: Apply iOS platform patch to engine
         working-directory: engine
@@ -56,10 +60,11 @@ jobs:
           "$VCPKG_ROOT/vcpkg" install --triplet arm64-ios
         # 风险提示：ffmpeg 在 iOS 上偶有失败。若失败，见仓库 README「ffmpeg 兜底」。
 
-      - name: Configure (CMake, iOS toolchain)
+      - name: Configure (CMake + vcpkg toolchain, chainload iOS)
         run: |
           cmake -B build-ios -S engine \
-            -DCMAKE_TOOLCHAIN_FILE=ios.toolchain.cmake \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=ios.toolchain.cmake \
             -DVCPKG_TARGET_TRIPLET=arm64-ios \
             -DCMAKE_BUILD_TYPE=Release
 
