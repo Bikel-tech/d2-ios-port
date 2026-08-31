@@ -20,4 +20,14 @@ set(VCPKG_CMAKE_CONFIGURE_OPTIONS
     -DCMAKE_OSX_ARCHITECTURES=arm64
     -DCMAKE_OSX_SYSROOT=iphoneos
     -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0
+    # libarchive ships CLI tools (bsdunzip/bsdtar/bsdcat/bsdcpio). On iOS CMake
+    # turns every executable into a MACOSX_BUNDLE, and their install() lacks a
+    # BUNDLE DESTINATION -> configure fails ("INSTALL TARGETS given no BUNDLE
+    # DESTINATION for MACOSX_BUNDLE executable"). We only need the libarchive
+    # library itself, so build without the CLI tools.
+    -DENABLE_UNZIP=OFF
+    -DENABLE_TAR=OFF
+    -DENABLE_CAT=OFF
+    -DENABLE_CPIO=OFF
+    -DENABLE_TEST=OFF
 )
