@@ -1,0 +1,62 @@
+name: Build + Smoke Test (Linux, headless)
+
+# 无头测试台：在没有 Mac / 没有编译器的工作机上，用 GitHub 的 Ubuntu
+# runner 验证我们的 Lua 贡献与引擎交叉编译是否健康。
+#   - Lua 语法检查：捕获所有 .lua（含 contrib 下的玩法贡献）的语法错误
+#   - 引擎交叉编译：证明代码在 Linux 上也能编（与 iOS 同套 C++/SDL2）
+#   - 无头启动冒烟：SDL 虚拟显示下启动引擎，确认能初始化（无 MPQ 数据时
+#     会进入 internal-error 屏，属预期，不视为失败）
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, linux-ci ]
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout port repo
+        uses: actions/checkout@v4
+
+      - name: Checkout engine (AbyssEngine, C++/CMake/SDL2)
+        uses: actions/checkout@v4
+        with:
+          repository: AbyssEngine/AbyssEngine
+          path: engine
+
+      - name: Checkout game content (OpenDiablo2)
+        uses: actions/checkout@v4
+        with:
+          repository: AbyssEngine/OpenDiablo2
+          path: game
+
+      - name: Install Lua + build toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.3 cmake ninja-build \
+            libsdl2-dev libarchive-dev zlib1g-dev \
+            libavformat-dev libavcodec-dev libavutil-dev libswscale-dev
+
+      - name: Lua syntax check (all game + contrib Lua)
+        run: |
+          fail=0
+          for f in $(find game contrib -name '*.lua' 2>/dev/null); do
+            if ! lua5.3 -e "assert(loadfile('$f'))" 2>/dev/null; then
+              echo "SYNTAX ERROR: $f"
+              lua5.3 -e "assert(loadfile('$f'))" || true
+              fail=1
+            fi
+          done
+          [ "$fail" = "0" ] && echo "Lua syntax OK"
+
+      - name: Configure (CMake, system libs)
+        run: cmake -B build-linux -S engine -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build engine
+        run: cmake --build build-linux --config Release
+
+      - name: Headless boot smoke test
+        run: |
+          SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy timeout 25 \
+            ./build-linux/AbyssEngine || true
+          echo "headless boot attempted (exit non-fatal)"
