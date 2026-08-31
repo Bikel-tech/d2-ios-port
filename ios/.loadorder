@@ -1,0 +1,8 @@
+# iOS-optimized MPQ load order.
+# Original upstream loadorder includes d2video.mpq and d2xvideo.mpq, which:
+#   1) on iOS we have no ffmpeg decoder (USE_FFMPEG=OFF), so we never play them;
+#   2) on stock CD installs the user only has 1 KB placeholder copies of these,
+#      which crash the engine at boot when addLoaderProvider("mpq", ...) fails.
+# So we intentionally drop them here. Patch this file together with the engine
+# loadorder when upstream changes.
+patch_d2.mpq,d2exp.mpq,d2xmusic.mpq,d2xtalk.mpq,d2data.mpq,d2char.mpq,d2music.mpq,d2sfx.mpq,d2speech.mpq
