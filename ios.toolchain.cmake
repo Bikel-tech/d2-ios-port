@@ -15,7 +15,7 @@ cmake_minimum_required(VERSION 3.20)
 
 # Identify the target platform to CMake.
 set(CMAKE_SYSTEM_NAME iOS)
-set(CMAKE_SYSTEM_VERSION 15.0 CACHE STRING "Build for iOS 15.0+ (A-series / M-series devices)")
+set(CMAKE_SYSTEM_VERSION 16.0 CACHE STRING "Build for iOS 16.0+ (VideoToolbox APIs used by ffmpeg need >= 16.0; target device is iPhone 17 Pro)")
 set(CMAKE_OSX_SYSROOT iphoneos CACHE STRING "Use the iOS device SDK")
 set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "Target Apple Silicon / A-series")
 

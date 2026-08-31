@@ -10,7 +10,7 @@
     <key>CFBundleExecutable</key>           <string>AbyssEngine</string>
     <key>CFBundlePackageType</key>          <string>APPL</string>
     <key>LSRequiresIPhoneOS</key>           <true/>
-    <key>MinimumOSVersion</key>             <string>15.0</string>
+    <key>MinimumOSVersion</key>             <string>16.0</string>
     <key>UIRequiredDeviceCapabilities</key>
     <array><string>arm64</string></array>
     <!-- Diablo II is a landscape game. -->
