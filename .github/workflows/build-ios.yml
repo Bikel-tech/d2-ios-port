@@ -52,7 +52,8 @@ jobs:
 
       - name: Build deps for iOS (arm64-ios)
         working-directory: engine
-        run: "$VCPKG_ROOT/vcpkg" install --triplet arm64-ios
+        run: |
+          "$VCPKG_ROOT/vcpkg" install --triplet arm64-ios
         # 风险提示：ffmpeg 在 iOS 上偶有失败。若失败，见仓库 README「ffmpeg 兜底」。
 
       - name: Configure (CMake, iOS toolchain)
